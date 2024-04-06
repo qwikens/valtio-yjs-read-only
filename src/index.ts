@@ -1,59 +1,12 @@
-import { subscribe, getVersion } from 'valtio/vanilla';
-import * as Y from 'yjs';
 import deepEqual from 'fast-deep-equal';
-import { parseProxyOps } from './parseProxyOps';
+import { getVersion } from 'valtio/vanilla';
+import * as Y from 'yjs';
 
 const isProxyObject = (x: unknown): x is Record<string, unknown> =>
   typeof x === 'object' && x !== null && getVersion(x) !== undefined;
 
 const isProxyArray = (x: unknown): x is unknown[] =>
   Array.isArray(x) && getVersion(x) !== undefined;
-
-const isPrimitiveMapValue = (v: unknown) =>
-  v === null ||
-  typeof v === 'string' ||
-  typeof v === 'number' ||
-  typeof v === 'boolean';
-
-type Options = {
-  transactionOrigin?: any;
-};
-
-const transact = (doc: Y.Doc | null, opts: Options, fn: () => void) => {
-  if (doc) {
-    doc.transact(fn, opts.transactionOrigin);
-  } else {
-    fn();
-  }
-};
-
-const toYValue = (val: any) => {
-  if (isProxyArray(val)) {
-    const arr = new Y.Array();
-    arr.insert(
-      0,
-      val.map(toYValue).filter((v) => v !== undefined && v !== null),
-    );
-    return arr;
-  }
-
-  if (isProxyObject(val)) {
-    const map = new Y.Map();
-    Object.entries(val).forEach(([key, value]) => {
-      const v = toYValue(value);
-      if (v !== undefined) {
-        map.set(key, v);
-      }
-    });
-    return map;
-  }
-
-  if (isPrimitiveMapValue(val)) {
-    return val;
-  }
-
-  return undefined;
-};
 
 const toJSON = (yv: unknown) => {
   if (yv instanceof Y.AbstractType) {
@@ -95,7 +48,6 @@ const getNestedValues = <T>(
 export function bind<T>(
   p: Record<string, T> | T[],
   y: Y.Map<T> | Y.Array<T>,
-  opts: Options = {},
 ): () => void {
   if (isProxyArray(p) && !(y instanceof Y.Array)) {
     if (process.env.NODE_ENV !== 'production') {
@@ -112,49 +64,16 @@ export function bind<T>(
   // initialize from y
   initializeFromY(p, y);
 
-  // initialize from p
-  initializeFromP(p, y, opts);
-
   if (isProxyArray(p) && y instanceof Y.Array) {
     p.splice(y.length);
   }
-
-  // subscribe p
-  const unsubscribeP = subscribeP(p, y, opts);
 
   // subscribe y
   const unsubscribeY = subscribeY(y, p);
 
   return () => {
-    unsubscribeP();
     unsubscribeY();
   };
-}
-
-function initializeFromP<T>(
-  p: Record<string, T> | T[],
-  y: Y.Map<T> | Y.Array<T>,
-  opts: Options,
-) {
-  transact(y.doc, opts, () => {
-    if (isProxyObject(p) && y instanceof Y.Map) {
-      Object.entries(p).forEach(([k, pv]) => {
-        const yv = y.get(k);
-        if (!deepEqual(pv, toJSON(yv))) {
-          insertPValueToY(pv, y, k);
-        }
-      });
-    }
-
-    if (isProxyArray(p) && y instanceof Y.Array) {
-      p.forEach((pv, i) => {
-        const yv = y.get(i);
-        if (!deepEqual(pv, toJSON(yv))) {
-          insertPValueToY(pv, y, i);
-        }
-      });
-    }
-  });
 }
 
 function initializeFromY<T>(
@@ -178,24 +97,6 @@ function initializeFromY<T>(
   }
 }
 
-function insertPValueToY<T>(
-  pv: T,
-  y: Y.Map<T> | Y.Array<T>,
-  k: number | string,
-) {
-  const yv = toYValue(pv);
-  if (yv === undefined && process.env.NODE_ENV !== 'production') {
-    console.warn('unsupported p type', pv);
-    return;
-  }
-
-  if (y instanceof Y.Map && typeof k === 'string') {
-    y.set(k, yv);
-  } else if (y instanceof Y.Array && typeof k === 'number') {
-    y.insert(k, [yv]);
-  }
-}
-
 function insertYValueToP<T>(
   yv: T,
   p: Record<string, T> | T[],
@@ -206,61 +107,6 @@ function insertYValueToP<T>(
   } else if (isProxyArray(p) && typeof k === 'number') {
     p.splice(k, 0, toJSON(yv));
   }
-}
-
-function subscribeP<T>(
-  p: Record<string, T> | T[],
-  y: Y.Map<T> | Y.Array<T>,
-  opts: Options,
-) {
-  return subscribe(p, (ops) => {
-    transact(y.doc, opts, () => {
-      ops.forEach((op) => {
-        const path = op[1].slice(0, -1) as string[];
-        const k = op[1][op[1].length - 1] as string;
-        const parent = getNestedValues(p, y, path);
-
-        if (parent.y instanceof Y.Map) {
-          if (op[0] === 'delete') {
-            parent.y.delete(k);
-          } else if (op[0] === 'set') {
-            const pv = parent.p[k];
-            const yv = parent.y.get(k);
-            if (!deepEqual(toJSON(yv), pv)) {
-              insertPValueToY(pv, parent.y, k);
-            }
-          }
-        } else if (parent.y instanceof Y.Array) {
-          if (deepEqual(toJSON(parent.y), parent.p)) {
-            return;
-          }
-
-          const arrayOps = parseProxyOps(ops);
-          arrayOps.forEach((aOp) => {
-            const i = aOp[1];
-            if (aOp[0] === 'delete') {
-              if (parent.y.length > i) {
-                parent.y.delete(i, 1);
-              }
-              return;
-            }
-            const pv = parent.p[i];
-            if (pv === undefined) {
-              return;
-            }
-            if (aOp[0] === 'set') {
-              if (parent.y.length > i) {
-                parent.y.delete(i, 1);
-              }
-              insertPValueToY(pv, parent.y, i);
-            } else if (aOp[0] === 'insert') {
-              insertPValueToY(pv, parent.y, i);
-            }
-          });
-        }
-      });
-    });
-  });
 }
 
 function subscribeY<T>(y: Y.Map<T> | Y.Array<T>, p: Record<string, T> | T[]) {

@@ -1,11 +1,11 @@
 {
-  "name": "valtio-yjs",
-  "description": "valtio-yjs makes yjs state easy",
+  "name": "valtio-yjs-read-only",
+  "description": "valtio-yjs makes yjs state easy. valtio-yjs-read-only is a fork that avoids mutations to the yjs documents. ",
   "version": "0.5.1",
   "author": "Daishi Kato",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dai-shi/valtio-yjs.git"
+    "url": "https://github.com/qwikens/valtio-yjs-read-only"
   },
   "source": "./src/index.ts",
   "main": "./dist/index.umd.js",
