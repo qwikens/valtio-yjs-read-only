@@ -1,4 +1,4 @@
-# valtio-yjs-read-only 💊🚀
+# valtio-yjs-read-only 💊🚀🧐
 
 [![npm](https://img.shields.io/npm/v/valtio-yjs-read-only)](https://www.npmjs.com/package/valtio-yjs-read-only)
 [![size](https://img.shields.io/bundlephobia/minzip/valtio-yjs-read-only)](https://bundlephobia.com/result?p=valtio-yjs-read-only)
