@@ -1,46 +1,52 @@
-# valtio-yjs 💊🚀
+# valtio-yjs-read-only 💊🚀
 
-[![CI](https://img.shields.io/github/actions/workflow/status/dai-shi/valtio-yjs/ci.yml?branch=main)](https://github.com/dai-shi/valtio-yjs/actions?query=workflow%3ACI)
-[![npm](https://img.shields.io/npm/v/valtio-yjs)](https://www.npmjs.com/package/valtio-yjs)
-[![size](https://img.shields.io/bundlephobia/minzip/valtio-yjs)](https://bundlephobia.com/result?p=valtio-yjs)
-[![discord](https://img.shields.io/discord/627656437971288081)](https://discord.gg/MrQdmzd)
+[![npm](https://img.shields.io/npm/v/valtio-yjs-read-only)](https://www.npmjs.com/package/valtio-yjs-read-only)
+[![size](https://img.shields.io/bundlephobia/minzip/valtio-yjs-read-only)](https://bundlephobia.com/result?p=valtio-yjs-read-only)
 
-valtio-yjs makes yjs state easy
+valtio-yjs-read-only makes yjs states reading easy. 
 
 ## What is this
 
-[valtio](https://github.com/pmndrs/valtio) is
+- [valtio](https://github.com/pmndrs/valtio) is
 a proxy state library for ReactJS and VanillaJS.
-[yjs](https://github.com/yjs/yjs) is
+- [yjs](https://github.com/yjs/yjs) is
 an implementation of CRDT algorithm
 (which allows to merge client data without server coordination).
+- [valtio-yjs](https://github.com/valtiojs/valtio-yjs) is a two-way binding to bridge them.
 
-valtio-yjs is a two-way binding to bridge them.
+valtio-yjs-read-only is a fork of valtio-yjs that makes the yjs documents read only.
 
 ## Project status
 
-It started as an experiment, and the experiment is finished.
-Now, it's in alpha.
-We encourage developers to try it in non-trivial apps, and find bugs.
+Please, check the original [valtio-yjs](https://github.com/valtiojs/valtio-yjs) project. 
+
+We are following their versions and making them read only 🧐
 
 ## Install
 
+
 ```bash
-yarn add valtio-yjs valtio yjs
+npm install valtio-yjs-read-only valtio yjs
+```
+```bash
+yarn add valtio-yjs-read-only valtio yjs
+```
+```bash
+pnpm install valtio-yjs-read-only valtio yjs
 ```
 
 ## How to use it
 
 ```js
-import * as Y from "yjs";
-import { proxy } from "valtio";
-import { bind } from "valtio-yjs";
+import * as Y from 'yjs';
+import { proxy } from 'valtio';
+import { bind } from 'valtio-yjs-read-only';
 
 // create a new Y doc
 const ydoc = new Y.Doc();
 
 // create a Y map
-const ymap = ydoc.getMap("mymap");
+const ymap = ydoc.getMap('mymap');
 
 // create a valtio state
 const state = proxy({});
@@ -48,20 +54,11 @@ const state = proxy({});
 // bind them
 const unbind = bind(state, ymap);
 
-// now you can mutate the state
-state.text = 'hello';
+// mutate the Y map
+ymap.set('foo', 'bar');
 
-// you can nest objects
-state.obj = { count: 0 };
-
-// and mutate the nested object value
-++state.obj.count;
-
-// you can use arrays too
-state.arr = [1, 2, 3];
-
-// mutating the array is also possible
-state.arr.push(4);
+// state is reactive to any mutations to "ymap"
+console.log(state); // {foo: 'bar'}
 
 // unbind them by calling the result
 unbind();
@@ -69,11 +66,4 @@ unbind();
 
 ## Demos
 
-Using `useSnapshot` in valtio and
-`WebsocketProvider` in [y-websocket](https://github.com/yjs/y-websocket),
-we can create multi-client React apps pretty easily.
-
-- [Messages object](https://codesandbox.io/s/valtio-yjs-demo-ox3iy)
-- [Messages array](https://codesandbox.io/s/valtio-yjs-array-demo-j1wkp)
-- [Minecraft + webrtc](https://codesandbox.io/s/minecraft-valtio-yjs-demo-656tq)
-- (...open a PR to add your demos)
+Take a look at how we are doing at the [Qwikens free Planning Poker](https://github.com/qwikens/planning-poker).
