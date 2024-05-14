@@ -1,7 +1,7 @@
 {
   "name": "valtio-yjs-read-only",
   "description": "valtio-yjs-read-only makes yjs states reading easy.",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "author": "Daishi Kato, forked by Aluisio Amorim C.",
   "repository": {
     "type": "git",
